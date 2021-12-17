@@ -97,11 +97,36 @@ class TransformContext extends Component<
   public maxBounds: BoundsType | null = null;
   // key press
   public pressedKeys: { [key: string]: boolean } = {};
+  mouseMoveWhilstDown(whileMove: any): void {
+    const endMove = function (funct: any) {
+      window.removeEventListener("mousemove", funct);
+      window.removeEventListener("mouseup", endMove);
+    };
+
+    window.addEventListener("mousedown", function (mouseDownEvent: any) {
+      const funct = (e: any) => whileMove(e, mouseDownEvent);
+      mouseDownEvent.stopPropagation(); // remove if you do want it to propagate ..
+      window.addEventListener("mousemove", funct);
+      window.addEventListener("mouseup", () => endMove(funct));
+    });
+  }
 
   componentDidMount(): void {
     const passive = makePassiveEventOption();
-    // Panning on window to allow panning when mouse is out of component wrapper
-    window.addEventListener("mousedown", this.onPanningStart, passive);
+
+    this.mouseMoveWhilstDown((mouseMoveEvent: any, mouseDownEvent: any) => {
+      const deltaX = Math.abs(mouseMoveEvent.clientX - mouseDownEvent.clientX);
+      const deltaY = Math.abs(mouseMoveEvent.deltaY - mouseDownEvent.deltaY);
+
+      if (this.isPanning) {
+        return;
+      }
+
+      if (deltaX > 100 || deltaY > 100) {
+        this.onPanningStart(mouseMoveEvent);
+      }
+    });
+
     window.addEventListener("mousemove", this.onPanning, passive);
     window.addEventListener("mouseup", this.onPanningStop, passive);
     document.addEventListener("mouseleave", this.clearPanning, passive);
